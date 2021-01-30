@@ -26,4 +26,13 @@ pub struct CliArgs {
 
     #[structopt(short, long)]
     pub debug: bool,
+
+    /// Run in server mode
+    #[structopt(long)]
+    pub server: bool,
+
+    /// Run in client mode
+    #[structopt(long)]
+    pub client: bool,
+
 }

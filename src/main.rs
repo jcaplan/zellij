@@ -5,6 +5,7 @@ mod cli;
 mod common;
 // TODO mod server;
 mod client;
+mod server;
 
 use client::{boundaries, layout, panes, tab};
 use common::{
@@ -50,6 +51,10 @@ pub fn main() {
         let mut stream = UnixStream::connect(MOSAIC_IPC_PIPE).unwrap();
         let api_command = bincode::serialize(&ApiCommand::OpenFile(file_to_open)).unwrap();
         stream.write_all(&api_command).unwrap();
+    } else if opts.client {
+        client::start_client();
+    } else if opts.server {
+        server::start_server();
     } else {
         let os_input = get_os_input();
         atomic_create_dir(MOSAIC_TMP_DIR).unwrap();

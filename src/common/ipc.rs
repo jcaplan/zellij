@@ -2,6 +2,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
+// Hardcoded location for the LocalSocket which is used for client-server comms
+pub const SOCKET_PATH: &str = "/var/run/mosaic/ipc";
+
 type SessionID = u64;
 
 #[derive(PartialEq, Eq, Serialize, Deserialize, Hash)]
