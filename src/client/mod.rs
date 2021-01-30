@@ -5,5 +5,5 @@ pub mod sessions;
 pub mod tab;
 
 pub fn start_client() {
-    sessions::connect_to_server().unwrap();
+    let server_conn = sessions::connect_to_server().unwrap();
 }
