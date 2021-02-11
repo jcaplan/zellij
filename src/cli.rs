@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-#[derive(StructOpt, Debug, Default)]
+#[derive(StructOpt, Debug, Default, Clone)]
 #[structopt(name = "mosaic")]
 pub struct CliArgs {
     /// Send "split (direction h == horizontal / v == vertical)" to active mosaic session

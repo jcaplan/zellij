@@ -4,6 +4,7 @@ use crate::tab::Pane;
 use ::nix::pty::Winsize;
 use ::std::os::unix::io::RawFd;
 use ::vte::Perform;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 use crate::panes::grid::Grid;
@@ -13,7 +14,7 @@ use crate::panes::terminal_character::{
 use crate::utils::logging::debug_log_to_file;
 use crate::VteEvent;
 
-#[derive(PartialEq, Eq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Ord, PartialOrd, Hash, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum PaneId {
     Terminal(RawFd),
     Plugin(u32), // FIXME: Drop the trait object, make this a wrapper for the struct?

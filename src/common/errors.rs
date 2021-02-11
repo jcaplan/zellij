@@ -1,6 +1,7 @@
 use super::{AppInstruction, OPENCALLS};
 use crate::pty_bus::PtyInstruction;
 use crate::screen::ScreenInstruction;
+use serde::{Deserialize, Serialize};
 
 use std::fmt::{Display, Error, Formatter};
 
@@ -66,7 +67,7 @@ pub fn handle_panic(
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct ErrorContext {
     calls: [ContextType; MAX_THREAD_CALL_STACK],
 }
@@ -108,14 +109,13 @@ impl Display for ErrorContext {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ContextType {
     Screen(ScreenContext),
     Pty(PtyContext),
-
     Plugin(PluginContext),
     App(AppContext),
-    IPCServer,
+    IPCServer, // Fix: Create a separate ServerContext when sessions are introduced
     StdinHandler,
     AsyncTask,
     Empty,
@@ -143,7 +143,7 @@ impl Display for ContextType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ScreenContext {
     HandlePtyEvent,
     Render,
@@ -216,7 +216,7 @@ impl From<&ScreenInstruction> for ScreenContext {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum PtyContext {
     SpawnTerminal,
     SpawnTerminalVertically,
@@ -245,7 +245,7 @@ impl From<&PtyInstruction> for PtyContext {
 
 use crate::wasm_vm::PluginInstruction;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum PluginContext {
     Load,
     Draw,
@@ -268,12 +268,15 @@ impl From<&PluginInstruction> for PluginContext {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum AppContext {
     GetState,
     SetState,
     Exit,
     Error,
+    ToPty,
+    ToPlugin,
+    ToScreen,
 }
 
 impl From<&AppInstruction> for AppContext {
@@ -283,6 +286,9 @@ impl From<&AppInstruction> for AppContext {
             AppInstruction::SetState(_) => AppContext::SetState,
             AppInstruction::Exit => AppContext::Exit,
             AppInstruction::Error(_) => AppContext::Error,
+            AppInstruction::ToPty(_) => AppContext::ToPty,
+            AppInstruction::ToPlugin(_) => AppContext::ToPlugin,
+            AppInstruction::ToScreen(_) => AppContext::ToScreen,
         }
     }
 }

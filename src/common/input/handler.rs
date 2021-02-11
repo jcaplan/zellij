@@ -21,7 +21,6 @@ struct InputHandler {
     os_input: Box<dyn OsApi>,
     command_is_executing: CommandIsExecuting,
     send_screen_instructions: SenderWithContext<ScreenInstruction>,
-    send_pty_instructions: SenderWithContext<PtyInstruction>,
     send_plugin_instructions: SenderWithContext<PluginInstruction>,
     send_app_instructions: SenderWithContext<AppInstruction>,
 }
@@ -31,7 +30,6 @@ impl InputHandler {
         os_input: Box<dyn OsApi>,
         command_is_executing: CommandIsExecuting,
         send_screen_instructions: SenderWithContext<ScreenInstruction>,
-        send_pty_instructions: SenderWithContext<PtyInstruction>,
         send_plugin_instructions: SenderWithContext<PluginInstruction>,
         send_app_instructions: SenderWithContext<AppInstruction>,
     ) -> Self {
@@ -41,7 +39,6 @@ impl InputHandler {
             os_input,
             command_is_executing,
             send_screen_instructions,
-            send_pty_instructions,
             send_plugin_instructions,
             send_app_instructions,
         }
@@ -51,7 +48,6 @@ impl InputHandler {
     fn get_input(&mut self) {
         let mut err_ctx = OPENCALLS.with(|ctx| *ctx.borrow());
         err_ctx.add_call(ContextType::StdinHandler);
-        self.send_pty_instructions.update(err_ctx);
         self.send_app_instructions.update(err_ctx);
         self.send_screen_instructions.update(err_ctx);
         if let Ok(keybinds) = get_default_keybinds() {
@@ -195,7 +191,9 @@ impl InputHandler {
                     None => PtyInstruction::SpawnTerminal(None),
                 };
                 self.command_is_executing.opening_new_pane();
-                self.send_pty_instructions.send(pty_instr).unwrap();
+                self.send_app_instructions
+                    .send(AppInstruction::ToPty(pty_instr))
+                    .unwrap();
                 self.command_is_executing.wait_until_new_pane_is_opened();
             }
             Action::CloseFocus => {
@@ -207,8 +205,8 @@ impl InputHandler {
             }
             Action::NewTab => {
                 self.command_is_executing.opening_new_pane();
-                self.send_pty_instructions
-                    .send(PtyInstruction::NewTab)
+                self.send_app_instructions
+                    .send(AppInstruction::ToPty(PtyInstruction::NewTab))
                     .unwrap();
                 self.command_is_executing.wait_until_new_pane_is_opened();
             }
@@ -333,7 +331,6 @@ pub fn input_loop(
     os_input: Box<dyn OsApi>,
     command_is_executing: CommandIsExecuting,
     send_screen_instructions: SenderWithContext<ScreenInstruction>,
-    send_pty_instructions: SenderWithContext<PtyInstruction>,
     send_plugin_instructions: SenderWithContext<PluginInstruction>,
     send_app_instructions: SenderWithContext<AppInstruction>,
 ) {
@@ -341,7 +338,6 @@ pub fn input_loop(
         os_input,
         command_is_executing,
         send_screen_instructions,
-        send_pty_instructions,
         send_plugin_instructions,
         send_app_instructions,
     )
