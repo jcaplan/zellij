@@ -9,21 +9,17 @@ mod server;
 use client::{boundaries, layout, panes, tab};
 use common::{
     command_is_executing, errors, ipc, os_input_output, pty_bus, screen, start, utils, wasm_vm,
-    ApiCommand,
+    ApiCommand, IpcSenderWithContext,
 };
-
-use std::io::Write;
-use std::os::unix::net::UnixStream;
 
 use structopt::StructOpt;
 
 use crate::cli::CliArgs;
 use crate::command_is_executing::CommandIsExecuting;
-use crate::errors::ErrorContext;
 use crate::os_input_output::get_os_input;
 use crate::pty_bus::VteEvent;
 use crate::utils::{
-    consts::{MOSAIC_IPC_PIPE, MOSAIC_TMP_DIR, MOSAIC_TMP_LOG_DIR},
+    consts::{MOSAIC_TMP_DIR, MOSAIC_TMP_LOG_DIR},
     logging::*,
 };
 
@@ -32,31 +28,29 @@ pub fn main() {
     if let Some(split_dir) = opts.split {
         match split_dir {
             'h' => {
-                let mut stream = UnixStream::connect(MOSAIC_IPC_PIPE).unwrap();
-                let api_command =
-                    bincode::serialize(&(ErrorContext::new(), ApiCommand::SplitHorizontally))
-                        .unwrap();
-                stream.write_all(&api_command).unwrap();
+                let mut send_server_instructions = IpcSenderWithContext::new();
+                send_server_instructions
+                    .send(ApiCommand::SplitHorizontally)
+                    .unwrap();
             }
             'v' => {
-                let mut stream = UnixStream::connect(MOSAIC_IPC_PIPE).unwrap();
-                let api_command =
-                    bincode::serialize(&(ErrorContext::new(), ApiCommand::SplitVertically))
-                        .unwrap();
-                stream.write_all(&api_command).unwrap();
+                let mut send_server_instructions = IpcSenderWithContext::new();
+                send_server_instructions
+                    .send(ApiCommand::SplitVertically)
+                    .unwrap();
             }
             _ => {}
         };
     } else if opts.move_focus {
-        let mut stream = UnixStream::connect(MOSAIC_IPC_PIPE).unwrap();
-        let api_command =
-            bincode::serialize(&(ErrorContext::new(), ApiCommand::MoveFocus)).unwrap();
-        stream.write_all(&api_command).unwrap();
+        let mut send_server_instructions = IpcSenderWithContext::new();
+        send_server_instructions
+            .send(ApiCommand::MoveFocus)
+            .unwrap();
     } else if let Some(file_to_open) = opts.open_file {
-        let mut stream = UnixStream::connect(MOSAIC_IPC_PIPE).unwrap();
-        let api_command =
-            bincode::serialize(&(ErrorContext::new(), ApiCommand::OpenFile(file_to_open))).unwrap();
-        stream.write_all(&api_command).unwrap();
+        let mut send_server_instructions = IpcSenderWithContext::new();
+        send_server_instructions
+            .send(ApiCommand::OpenFile(file_to_open))
+            .unwrap();
     } else {
         let os_input = get_os_input();
         atomic_create_dir(MOSAIC_TMP_DIR).unwrap();

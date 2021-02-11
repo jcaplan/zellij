@@ -111,6 +111,38 @@ impl<T: Clone> SenderWithContext<T> {
 unsafe impl<T: Clone> Send for SenderWithContext<T> {}
 unsafe impl<T: Clone> Sync for SenderWithContext<T> {}
 
+pub struct IpcSenderWithContext {
+    err_ctx: ErrorContext,
+    sender: UnixStream,
+}
+
+impl IpcSenderWithContext {
+    pub fn new() -> Self {
+        Self {
+            err_ctx: ErrorContext::new(),
+            sender: UnixStream::connect(MOSAIC_IPC_PIPE).unwrap(),
+        }
+    }
+
+    pub fn update(&mut self, ctx: ErrorContext) {
+        self.err_ctx = ctx;
+    }
+
+    pub fn send(&mut self, msg: ApiCommand) -> std::io::Result<()> {
+        let command = bincode::serialize(&(self.err_ctx, msg)).unwrap();
+        self.sender.write_all(&command)
+    }
+}
+
+impl std::clone::Clone for IpcSenderWithContext {
+    fn clone(&self) -> Self {
+        Self {
+            err_ctx: self.err_ctx,
+            sender: UnixStream::connect(MOSAIC_IPC_PIPE).unwrap(),
+        }
+    }
+}
+
 thread_local!(static OPENCALLS: RefCell<ErrorContext> = RefCell::default());
 
 #[derive(Clone)]
@@ -465,7 +497,7 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
             }
         });
 
-    let mut server_stream = UnixStream::connect(MOSAIC_IPC_PIPE).unwrap();
+    let mut send_server_instructions = IpcSenderWithContext::new();
 
     #[warn(clippy::never_loop)]
     loop {
@@ -475,6 +507,7 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
 
         err_ctx.add_call(ContextType::App(AppContext::from(&app_instruction)));
         send_screen_instructions.update(err_ctx);
+        send_server_instructions.update(err_ctx);
         match app_instruction {
             AppInstruction::GetState(state_tx) => drop(state_tx.send(app_state.clone())),
             AppInstruction::SetState(state) => app_state = state,
@@ -482,8 +515,7 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
                 break;
             }
             AppInstruction::Error(backtrace) => {
-                let api_command = bincode::serialize(&(err_ctx, ApiCommand::Quit)).unwrap();
-                server_stream.write_all(&api_command).unwrap();
+                let _ = send_server_instructions.send(ApiCommand::Quit);
                 let _ = ipc_thread.join();
                 let _ = send_screen_instructions.send(ScreenInstruction::Quit);
                 let _ = screen_thread.join();
@@ -505,15 +537,12 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
                 send_plugin_instructions.send(instruction).unwrap();
             }
             AppInstruction::ToPty(instruction) => {
-                let api_command =
-                    bincode::serialize(&(err_ctx, ApiCommand::ToPty(instruction))).unwrap();
-                server_stream.write_all(&api_command).unwrap();
+                let _ = send_server_instructions.send(ApiCommand::ToPty(instruction));
             }
         }
     }
 
-    let api_command = bincode::serialize(&(err_ctx, ApiCommand::Quit)).unwrap();
-    server_stream.write_all(&api_command).unwrap();
+    let _ = send_server_instructions.send(ApiCommand::Quit);
     let _ = ipc_thread.join().unwrap();
     let _ = send_screen_instructions.send(ScreenInstruction::Quit);
     screen_thread.join().unwrap();
