@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::os::unix::io::RawFd;
+use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 
 use super::{AppInstruction, SenderWithContext};
@@ -47,7 +48,7 @@ pub enum ScreenInstruction {
     SetMaxHeight(PaneId, usize),
     SetInvisibleBorders(PaneId, bool),
     ClosePane(PaneId),
-    ApplyLayout((Layout, Vec<RawFd>)),
+    ApplyLayout((PathBuf, Vec<RawFd>)),
     NewTab(RawFd),
     SwitchTabNext,
     SwitchTabPrev,

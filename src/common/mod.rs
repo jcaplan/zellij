@@ -26,6 +26,7 @@ use wasmer::{ChainableNamedResolver, Instance, Module, Store, Value};
 use wasmer_wasi::{Pipe, WasiState};
 
 use crate::cli::CliArgs;
+use crate::layout::Layout;
 use crate::server::start_server;
 use command_is_executing::CommandIsExecuting;
 use errors::{AppContext, ContextType, ErrorContext, PluginContext, ScreenContext};
@@ -129,8 +130,11 @@ impl IpcSenderWithContext {
     }
 
     pub fn send(&mut self, msg: ApiCommand) -> std::io::Result<()> {
+        eprintln!("Ipcsender sending {:?}", msg);
         let command = bincode::serialize(&(self.err_ctx, msg)).unwrap();
-        self.sender.write_all(&command)
+        UnixStream::connect(MOSAIC_IPC_PIPE)
+            .unwrap()
+            .write_all(&command)
     }
 }
 
@@ -344,7 +348,7 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
                         ScreenInstruction::SwitchTabPrev => screen.switch_tab_prev(),
                         ScreenInstruction::CloseTab => screen.close_tab(),
                         ScreenInstruction::ApplyLayout((layout, new_pane_pids)) => {
-                            screen.apply_layout(layout, new_pane_pids);
+                            screen.apply_layout(Layout::new(layout), new_pane_pids);
                             command_is_executing.done_opening_new_pane();
                         }
                         ScreenInstruction::Quit => {
@@ -516,7 +520,8 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
             }
             AppInstruction::Error(backtrace) => {
                 let _ = send_server_instructions.send(ApiCommand::Quit);
-                let _ = ipc_thread.join();
+                //let _ = ipc_thread.join();
+                //IpcSenderWithContext::new().send(ApiCommand::Quit);
                 let _ = send_screen_instructions.send(ScreenInstruction::Quit);
                 let _ = screen_thread.join();
                 let _ = send_plugin_instructions.send(PluginInstruction::Quit);
@@ -524,10 +529,11 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
                 os_input.unset_raw_mode(0);
                 let goto_start_of_last_line = format!("\u{1b}[{};{}H", full_screen_ws.rows, 1);
                 let error = format!("{}\n{}", goto_start_of_last_line, backtrace);
-                let _ = os_input
-                    .get_stdout_writer()
-                    .write(error.as_bytes())
-                    .unwrap();
+                //let _ = os_input
+                //    .get_stdout_writer()
+                //    .write(error.as_bytes())
+                //    .unwrap();
+                eprintln!("{}", error);
                 std::process::exit(1);
             }
             AppInstruction::ToScreen(instruction) => {
@@ -543,7 +549,8 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
     }
 
     let _ = send_server_instructions.send(ApiCommand::Quit);
-    let _ = ipc_thread.join().unwrap();
+    //let _ = ipc_thread.join().unwrap();
+    //IpcSenderWithContext::new().send(ApiCommand::Quit);
     let _ = send_screen_instructions.send(ScreenInstruction::Quit);
     screen_thread.join().unwrap();
     let _ = send_plugin_instructions.send(PluginInstruction::Quit);
