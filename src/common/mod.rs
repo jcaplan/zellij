@@ -130,7 +130,6 @@ impl IpcSenderWithContext {
     }
 
     pub fn send(&mut self, msg: ApiCommand) -> std::io::Result<()> {
-        eprintln!("IpcSender sent {:?}", msg);
         let command = bincode::serialize(&(self.err_ctx, msg)).unwrap();
         let x = self.sender.write_all(&command);
         self.sender.flush();
@@ -521,7 +520,6 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
             AppInstruction::Error(backtrace) => {
                 let _ = send_server_instructions.send(ApiCommand::Quit);
                 let _ = pty_thread.join();
-                //IpcSenderWithContext::new().send(ApiCommand::Quit);
                 let _ = send_screen_instructions.send(ScreenInstruction::Quit);
                 let _ = screen_thread.join();
                 let _ = send_plugin_instructions.send(PluginInstruction::Quit);
@@ -529,11 +527,10 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
                 os_input.unset_raw_mode(0);
                 let goto_start_of_last_line = format!("\u{1b}[{};{}H", full_screen_ws.rows, 1);
                 let error = format!("{}\n{}", goto_start_of_last_line, backtrace);
-                //let _ = os_input
-                //    .get_stdout_writer()
-                //    .write(error.as_bytes())
-                //    .unwrap();
-                eprintln!("{}", error);
+                let _ = os_input
+                    .get_stdout_writer()
+                    .write(error.as_bytes())
+                    .unwrap();
                 std::process::exit(1);
             }
             AppInstruction::ToScreen(instruction) => {
@@ -550,7 +547,6 @@ pub fn start(mut os_input: Box<dyn OsApi>, opts: CliArgs) {
 
     let _ = send_server_instructions.send(ApiCommand::Quit);
     let _ = pty_thread.join().unwrap();
-    //IpcSenderWithContext::new().send(ApiCommand::Quit);
     let _ = send_screen_instructions.send(ScreenInstruction::Quit);
     screen_thread.join().unwrap();
     let _ = send_plugin_instructions.send(PluginInstruction::Quit);
