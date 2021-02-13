@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use std::fmt::{Display, Error, Formatter};
 
-const MAX_THREAD_CALL_STACK: usize = 6;
+const MAX_THREAD_CALL_STACK: usize = 10;
 
 #[cfg(not(test))]
 use super::SenderWithContext;
