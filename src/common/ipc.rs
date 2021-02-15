@@ -3,29 +3,30 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 // Hardcoded location for the LocalSocket which is used for client-server comms
-pub const SOCKET_PATH: &str = "/var/run/mosaic/ipc";
+//pub const SOCKET_PATH: &str = "/var/run/mosaic/ipc";
+pub const SOCKET_PATH: &str = "/tmp/mosaic/ipc";
 
 type SessionID = u64;
 
-#[derive(PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct Session {
     // Unique ID for this session
-    id: SessionID,
+    pub id: SessionID,
     // Identifier for the underlying IPC primitive (socket, pipe)
-    conn_name: String,
+    pub conn_name: String,
     // User configured alias for the session
-    alias: String,
+    pub alias: String,
 }
 
 // How do we want to connect to a session?
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ClientType {
     Reader,
     Writer,
 }
 
 // Types of messages sent from the client to the server
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ClientToServerMsg {
     // List which sessions are available
     ListSessions,
@@ -41,9 +42,11 @@ pub enum ClientToServerMsg {
 
 // Types of messages sent from the server to the client
 // @@@ Implement Serialize and Deserialize for this...
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ServerToClientMsg {
     // Info about a particular session
     SessionInfo(Session),
+    //TODO: Implement serialize myself
     // A list of sessions
-    SessionList(HashSet<Session>),
+    //SessionList(HashSet<Session>),
 }
