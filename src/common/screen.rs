@@ -38,7 +38,7 @@ pub enum ScreenInstruction {
     MoveFocusDown,
     MoveFocusUp,
     MoveFocusRight,
-    Quit,
+    Exit,
     ScrollUp,
     ScrollDown,
     ClearScroll,
